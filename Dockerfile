@@ -1,7 +1,7 @@
-# Dockerfile recomendado para Puppeteer + Node
+# Dockerfile (colocar na raiz do repositório)
 FROM node:20-bullseye-slim
 
-# instalar dependências do sistema necessárias para Chromium
+# dependências do sistema necessárias para Chromium
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     fonts-liberation \
@@ -24,23 +24,24 @@ RUN apt-get update && apt-get install -y \
     --no-install-recommends && \
     rm -rf /var/lib/apt/lists/*
 
-# diretório de trabalho
 WORKDIR /usr/src/app
 
-# Copia package.json e package-lock.json primeiro para cache de layers
+# Copia apenas package.json / package-lock.json primeiro para aproveitar cache de camada
 COPY package*.json ./
 
-# instala dependências (vai baixar Chromium se usar puppeteer)
-RUN npm install --omit=dev --no-audit --no-fund
+# Instala dependências: usa npm ci se houver lockfile, senão npm install
+RUN if [ -f package-lock.json ]; then \
+      npm ci --omit=dev --no-audit --no-fund; \
+    else \
+      npm install --omit=dev --no-audit --no-fund; \
+    fi
 
-# copia o restante do app
+# Copia o resto da aplicação
 COPY . .
 
-# expor porta (Render vai fornecer $PORT no runtime)
+# Expor porta (o runtime usará process.env.PORT)
 EXPOSE 3000
 
-# variáveis de ambiente seguras por padrão
 ENV NODE_ENV=production
 
-# comando de start
 CMD ["node", "server.js"]
