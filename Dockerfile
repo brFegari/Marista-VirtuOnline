@@ -31,7 +31,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # instala dependências (vai baixar Chromium se usar puppeteer)
-RUN npm ci --omit=dev
+RUN npm install --omit=dev --no-audit --no-fund
 
 # copia o restante do app
 COPY . .
