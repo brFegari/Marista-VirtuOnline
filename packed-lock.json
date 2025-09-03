@@ -1,0 +1,6 @@
+# instala dependências e gera package-lock.json
+npm install
+# adiciona o lockfile ao git
+git add package-lock.json
+git commit -m "Adiciona package-lock.json para builds docker reproduzíveis"
+git push
