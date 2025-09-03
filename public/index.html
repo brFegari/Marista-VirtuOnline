@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <title>Marista Notas — Extrator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <style>
+    body { font-family: Inter, system-ui, sans-serif; max-width: 820px; margin: 24px auto; padding: 16px; }
+    input, button { padding: 8px 10px; font-size: 16px; }
+    .card { padding: 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.06); margin-bottom:12px; }
+    pre { background:#f6f8fa; padding:12px; border-radius:6px; overflow:auto; }
+  </style>
+</head>
+<body>
+  <h1>Extrator de notas — Marista (APSWeb)</h1>
+
+  <div class="card">
+    <form id="form">
+      <div>
+        <label>Usuário / Matrícula / Email:</label><br/>
+        <input id="email" autocomplete="username" required />
+      </div>
+      <div style="margin-top:8px">
+        <label>Senha:</label><br/>
+        <input id="password" type="password" autocomplete="current-password" required />
+      </div>
+      <div style="margin-top:8px">
+        <label>Meta média alvo (ex: 7):</label><br/>
+        <input id="target" type="number" step="0.1" value="7.0" />
+      </div>
+      <div style="margin-top:12px">
+        <button type="submit">Extrair notas e calcular</button>
+      </div>
+    </form>
+  </div>
+
+  <div id="result"></div>
+
+  <script>
+    const form = document.getElementById('form');
+    const result = document.getElementById('result');
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      result.innerHTML = '<div class="card">Processando... aguarde — não feche a aba.</div>';
+      const body = {
+        email: document.getElementById('email').value,
+        password: document.getElementById('password').value,
+        targetAverage: document.getElementById('target').value
+      };
+      try {
+        const r = await fetch('/api/login-and-scrape', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await r.json();
+        if (!json.success) {
+          result.innerHTML = `<div class="card">Erro: ${json.error || 'Resposta não esperada'}</div>`;
+          return;
+        }
+        // exibir resumo simples
+        const d = json.data;
+        let html = `<div class="card"><strong>Resultados (extraídos em ${d.scrapedAt})</strong><br/>Página de notas: ${d.gradesPageUrl || 'não identificada'}</div>`;
+        html += `<div class="card"><strong>Resumo de disciplinas (${d.stats.countSubjects}) — piores primeiro</strong><ol>`;
+        d.worstOrdered.slice(0,20).forEach(s => {
+          const avg = s.avg!==null ? s.avg.toFixed(2) : '—';
+          const need = s.needToReachTarget && s.needToReachTarget.possible ? 
+            (s.needToReachTarget.requiredOnNext !== undefined ? ` precisa ~ ${Number(s.needToReachTarget.requiredOnNext).toFixed(2)} na próxima` : s.needToReachTarget.reason)
+            : (s.needToReachTarget.reason || '—');
+          html += `<li><strong>${s.name}</strong> — média: ${avg} — ${need}</li>`;
+        });
+        html += `</ol></div>`;
+
+        html += `<div class="card"><strong>Dados completos (raw)</strong><pre>${JSON.stringify(d, null, 2)}</pre></div>`;
+        result.innerHTML = html;
+      } catch (err) {
+        result.innerHTML = `<div class="card">Erro: ${err.message}</div>`;
+      }
+    });
+  </script>
+</body>
+</html>
